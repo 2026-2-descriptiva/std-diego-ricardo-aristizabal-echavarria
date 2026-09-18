@@ -3,18 +3,19 @@ import os
 from ..src.word_count_2 import *
 
 DATA_FOLDER = "PRE_02_mapreduce/data"
-input_folder = "PRE_02_mapreduce/temp/input"
+INPUT_FOLDER = "PRE_02_mapreduce/temp/input"
 OUTPUT_FOLDER = "PRE_02_mapreduce/temp/output"
 
 
 def test_01():
 
-    initialize_folder(input_folder)
+    n = 1000
+    initialize_folder(INPUT_FOLDER)
     delete_folder(OUTPUT_FOLDER)
-    generate_file_copies(1000)
+    generate_file_copies(DATA_FOLDER, INPUT_FOLDER, n)
 
     hadoop(
-        input_folder=input_folder,
+        input_folder=INPUT_FOLDER,
         output_folder=OUTPUT_FOLDER,
         mapper_fn=mapper,
         reducer_fn=reducer,

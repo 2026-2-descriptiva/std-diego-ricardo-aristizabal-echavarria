@@ -1,6 +1,3 @@
-# Importación de paquetes y declaración de constantes
-# -----------------------------------------------------------------------------
-
 import glob
 import os.path
 import string
@@ -10,16 +7,63 @@ DATA_FOLDER = "PRE_02_mapreduce/data"
 INPUT_FOLDER = "PRE_02_mapreduce/temp/input"
 OUTPUT_FOLDER = "PRE_02_mapreduce/temp/output"
 
-# La carpeta input/ debe existir y estar vacia.
-# -----------------------------------------------------------------------------
+#
+# Esta es la abstracción de la función hadoop que simula el comportamiento de un job de Hadoop.
+#  
+def hadoop(
+    input_folder,
+    output_folder,
+    mapper_fn,
+    reducer_fn,
+):
 
-def clear_folder(input_folder):
-    if os.path.exists(input_folder):
-        for file in glob.glob(f"{input_folder}/*"):
+    def read_records_from_input(folder):
+        sequence = []
+        files = glob.glob(f"{folder}/*")
+        for file in files:
+            with open(file, "r", encoding="utf-8") as f:
+                for line in f:
+                    sequence.append((file, line))
+        return sequence
+
+    def save_results_to_output(folder, result):
+        with open(f"{folder}/part-00000", "w", encoding="utf-8") as f:
+            for key, value in result:
+                f.write(f"{key}\t{value}\n")
+
+    def create_success_file(folder):
+        with open(f"{folder}/_SUCCESS", "w", encoding="utf-8") as f:
+            f.write("")
+
+    def check_folder_exists(folder):
+        if os.path.exists(folder):
+            raise FileExistsError("La carpeta ya existe")
+
+    check_folder_exists(output_folder)
+    os.mkdir(output_folder)
+
+    sequence = read_records_from_input(folder=input_folder)
+    sequence = mapper_fn(sequence)
+    sequence = sorted(sequence)
+    sequence = reducer_fn(sequence)
+    save_results_to_output(output_folder, sequence)
+    create_success_file(output_folder)
+
+    
+
+#
+# Este es el código especifico del experimento
+#
+
+def clear_folder(folder):
+    if os.path.exists(folder):
+        for file in glob.glob(f"{folder}/*"):
             os.remove(file)
+
 
 def create_folder(input_folder):
     os.makedirs(input_folder)
+
 
 def initialize_folder(input_folder):
     if os.path.exists(input_folder):
@@ -27,11 +71,11 @@ def initialize_folder(input_folder):
     else:
         create_folder(input_folder)
 
-# Genera copias de los archivos en raw
-# -----------------------------------------------------------------------------
 
-def generate_file_copies(DATA_FOLDER, input_folder, n):
-    for file in glob.glob(f"{DATA_FOLDER}/*"):
+def generate_file_copies(data_folder, input_folder, n):
+
+    
+    for file in glob.glob(f"{data_folder}/*"):
         with open(file, "r", encoding="utf-8") as f:
             text = f.read()
 
@@ -47,30 +91,6 @@ def generate_file_copies(DATA_FOLDER, input_folder, n):
             with open(f"{input_folder}/{new_filename}", "w", encoding="utf-8") as f2:
                 f2.write(text)
 
-n = 1000
-initialize_folder(INPUT_FOLDER)
-generate_file_copies(DATA_FOLDER, INPUT_FOLDER, n)
-
-# Lectura de los archivos
-# -----------------------------------------------------------------------------
-
-start_time = time.time()
-
-def read_records_from_input(input_folder):
-    sequence = []
-    files = glob.glob(f"{input_folder}/*")
-    for file in files:
-        with open(file, "r", encoding="utf-8") as f:
-            for line in f:
-                sequence.append((file, line))
-    return sequence
-
-sequence = read_records_from_input()
-
-
-# Mapper
-# -----------------------------------------------------------------------------
-
 def mapper(sequence):
     pairs_sequence = []
     for _, line in sequence:
@@ -81,17 +101,6 @@ def mapper(sequence):
         pairs_sequence.extend([(word, 1) for word in words])
     return pairs_sequence
 
-pairs_sequence = mapper(sequence)
-
-
-# Shuffle and sort
-# -----------------------------------------------------------------------------
-
-pairs_sequence = sorted(pairs_sequence)
-
-
-# Reducer
-# -----------------------------------------------------------------------------
 
 def reducer(pairs_sequence):
     result = []
@@ -102,28 +111,33 @@ def reducer(pairs_sequence):
             result.append((key, value))
     return result
 
-result = reducer(pairs_sequence)
+def delete_folder(folder):
+    if os.path.exists(folder):
+        for file in glob.glob(f"{folder}/*"):
+            os.remove(file)
+        os.rmdir(folder)
 
-# La carpeta de salida debe estar vacia
-# -----------------------------------------------------------------------------
+def main():
 
-initialize_folder(OUTPUT_FOLDER)
+    n = 1000
+
+    initialize_folder(INPUT_FOLDER)
+    delete_folder(OUTPUT_FOLDER)
+    generate_file_copies(DATA_FOLDER, INPUT_FOLDER, n)
+
+    start_time = time.time()
+
+    hadoop(
+        input_folder=INPUT_FOLDER,
+        output_folder=OUTPUT_FOLDER,
+        mapper_fn=mapper,
+        reducer_fn=reducer,
+    )
+
+    end_time = time.time()
+    print(f"Tiempo de ejecución: {end_time - start_time:.2f} segundos")
 
 
-# Archivo con el conteo
+if __name__ == "__main__":
 
-with open(f"{OUTPUT_FOLDER}/part-00000", "w", encoding="utf-8") as f:
-    for key, value in result:
-        f.write(f"{key}\t{value}\n")
-
-
-# Marcador de éxito
-
-with open(f"{OUTPUT_FOLDER}/_SUCCESS", "w", encoding="utf-8") as f:
-    f.write("")
-
-
-# Reporte de tiempo de ejecución
-
-end_time = time.time()
-print(f"Tiempo de ejecución: {end_time - start_time:.2f} segundos")
+    main()
