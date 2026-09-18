@@ -1,3 +1,6 @@
+# Importación de paquetes y declaración de constantes
+# -----------------------------------------------------------------------------
+
 import glob
 import os.path
 import string
@@ -8,6 +11,7 @@ INPUT_FOLDER = "PRE_02_mapreduce/temp/input"
 OUTPUT_FOLDER = "PRE_02_mapreduce/temp/output"
 
 # La carpeta input/ debe existir y estar vacia.
+# -----------------------------------------------------------------------------
 
 def clear_folder(input_folder):
     if os.path.exists(input_folder):
@@ -23,7 +27,8 @@ def initialize_folder(input_folder):
     else:
         create_folder(input_folder)
 
-# Genera copias de los archivos en raw/
+# Genera copias de los archivos en raw
+# -----------------------------------------------------------------------------
 
 def generate_file_copies(DATA_FOLDER, input_folder, n):
     for file in glob.glob(f"{DATA_FOLDER}/*"):
@@ -47,18 +52,24 @@ initialize_folder(INPUT_FOLDER)
 generate_file_copies(DATA_FOLDER, INPUT_FOLDER, n)
 
 # Lectura de los archivos
+# -----------------------------------------------------------------------------
 
 start_time = time.time()
 
-sequence = []
-files = glob.glob(f"{input_folder}/*")
-for file in files:
-    with open(file, "r", encoding="utf-8") as f:
-        for line in f:
-            sequence.append((file, line))
+def read_records_from_input(input_folder):
+    sequence = []
+    files = glob.glob(f"{input_folder}/*")
+    for file in files:
+        with open(file, "r", encoding="utf-8") as f:
+            for line in f:
+                sequence.append((file, line))
+    return sequence
+
+sequence = read_records_from_input()
 
 
 # Mapper
+# -----------------------------------------------------------------------------
 
 def mapper(sequence):
     pairs_sequence = []
@@ -74,9 +85,9 @@ pairs_sequence = mapper(sequence)
 
 
 # Shuffle and sort
+# -----------------------------------------------------------------------------
 
 pairs_sequence = sorted(pairs_sequence)
-
 
 
 # Reducer
@@ -93,14 +104,10 @@ def reducer(pairs_sequence):
 
 result = reducer(pairs_sequence)
 
-
 # La carpeta de salida debe estar vacia
+# -----------------------------------------------------------------------------
 
-if os.path.exists(OUTPUT_FOLDER):
-    for file in glob.glob(f"{OUTPUT_FOLDER}/*"):
-        os.remove(file)
-else:
-    os.makedirs(OUTPUT_FOLDER)
+initialize_folder(OUTPUT_FOLDER)
 
 
 # Archivo con el conteo
